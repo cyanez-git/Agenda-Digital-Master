@@ -1,7 +1,7 @@
 export interface AppointmentType {
     id: string;
     label: string;
-    duration: number; // in minutes
+    duration: number;
     colorKey: string;
     price?: number;
 }
@@ -13,9 +13,7 @@ export interface Professional {
     avatar?: string;
 }
 
-// Minimal theme type since APP_THEMES is in App.tsx (or move it?)
-// For now, let's keep it simple string or specific keys if we move APP_THEMES
-export type AppThemeKey = 'blue' | 'teal' | 'violet' | 'slate';
+export type AppThemeKey = 'blue' | 'teal' | 'violet' | 'slate' | 'indigo' | 'rose';
 
 export interface AppConfig {
     clientId: string;
@@ -27,9 +25,9 @@ export interface AppConfig {
     gridStep: number;
     whatsappConfirmTemplate: string;
     whatsappReminderTemplate: string;
-    country: string; // 'AR', 'MX', etc.
-    startHour: number; // Schedule start hour (0-23), default: 8
-    endHour: number;   // Schedule end hour (0-23), default: 20
+    country: string;
+    startHour: number;
+    endHour: number;
 }
 
 export interface Patient {
@@ -39,7 +37,7 @@ export interface Patient {
     dni?: string;
     email?: string;
     phone: string;
-    whatsappName?: string; // Custom name for WhatsApp messages, defaults to name if not set
+    whatsappName?: string;
     birthDate?: string;
     firstVisit: string;
     lastVisit: string;
@@ -56,7 +54,7 @@ export interface Appointment {
     dni?: string;
     email?: string;
     phone?: string;
-    whatsappName?: string; // Custom name for WhatsApp messages
+    whatsappName?: string;
     date: string;
     time: string;
     duration: number;
@@ -72,7 +70,26 @@ export interface Note {
     professionalId: string;
     title: string;
     content: string;
-    date: string; // YYYY-MM-DD format
+    date: string;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface ToastMessage {
+    title: string;
+    msg: string;
+    type?: 'info' | 'error' | 'success' | 'warning';
+    actionLabel?: string;
+    onAction?: () => void;
+}
+
+export interface AppNotification {
+    id: string;
+    title: string;
+    msg: string;
+    timestamp: Date;
+    read: boolean;
+    type: 'info' | 'success' | 'warning' | 'error';
+    actionLabel?: string;
+    onAction?: () => void;
 }

@@ -1,3 +1,6 @@
+export const normalizeText = (text: string) =>
+    text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
 export const getInitials = (name: string): string => {
     if (!name) return '';
     const parts = name.split(' ').filter(p => p.length > 0);
