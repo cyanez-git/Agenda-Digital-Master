@@ -10,7 +10,22 @@ import { db } from "./db"; // Ensures init runs
 // admin.initializeApp(); // Handled in db.ts
 
 const app = express();
-app.use(cors({ origin: true }));
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
+    : ["https://agendadigital-profesional.web.app", "https://agendadigital-profesional.firebaseapp.com"];
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, Postman in dev)
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS"));
+        }
+    }
+}));
+app.use(express.json({ limit: "1mb" }));
 
 // --- TYPES ---
 interface AppointmentRequest {
@@ -24,13 +39,15 @@ interface AppointmentRequest {
 }
 
 // --- MIDDLEWARE: API KEY AUTH ---
-// For now, we use a simple hardcoded check or environment variable.
-// In production, use "api_keys" collection.
 const validateApiKey = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const key = req.headers['x-api-key'];
-    // TODO: Move to Firestore or Secrets Manager. 
-    // Hardcoded for MVP as per plan. 
-    const VALID_KEY = "agenda-digital-secret-key-123";
+    const VALID_KEY = process.env.API_SECRET_KEY;
+
+    if (!VALID_KEY) {
+        console.error("[Auth] API_SECRET_KEY environment variable is not set");
+        res.status(500).json({ error: "Server configuration error" });
+        return;
+    }
 
     if (!key || key !== VALID_KEY) {
         res.status(401).json({ error: "Unauthorized: Invalid API Key" });
@@ -60,7 +77,8 @@ app.get("/v1/:clientId/appointments", async (req: express.Request, res: express.
 
         res.json({ data });
     } catch (e: any) {
-        res.status(500).json({ error: e.message });
+        console.error("[GET /appointments] Error:", e);
+        res.status(500).json({ error: "Internal server error" });
     }
 });
 
@@ -86,7 +104,8 @@ app.get("/v1/:clientId/professionals", async (req: express.Request, res: express
 
         res.json({ data: publicProfs });
     } catch (e: any) {
-        res.status(500).json({ error: e.message });
+        console.error("[GET /professionals] Error:", e);
+        res.status(500).json({ error: "Internal server error" });
     }
 });
 
@@ -132,7 +151,8 @@ app.get("/v1/:clientId/slots", async (req: express.Request, res: express.Respons
         res.json({ date, availableSlots });
 
     } catch (e: any) {
-        res.status(500).json({ error: e.message });
+        console.error("[GET /slots] Error:", e);
+        res.status(500).json({ error: "Internal server error" });
     }
 });
 
@@ -191,7 +211,8 @@ app.post("/v1/:clientId/appointments", async (req: express.Request, res: express
         });
 
     } catch (e: any) {
-        res.status(500).json({ error: e.message });
+        console.error("[POST /appointments] Error:", e);
+        res.status(500).json({ error: "Internal server error" });
     }
 });
 
@@ -263,18 +284,34 @@ app.put("/v1/:clientId/appointments/:id", async (req: express.Request, res: expr
         res.json({ message: "Appointment updated", id });
 
     } catch (e: any) {
-        res.status(500).json({ error: e.message });
+        console.error("[PUT /appointments] Error:", e);
+        res.status(500).json({ error: "Internal server error" });
     }
 });
 
 // 5. CANCEL APPOINTMENT (DELETE)
 app.delete("/v1/:clientId/appointments/:id", async (req: express.Request, res: express.Response) => {
-    const { id } = req.params;
+    const { clientId, id } = req.params;
     try {
-        await db.collection("appointments").doc(id).delete();
+        const apptRef = db.collection("appointments").doc(id);
+        const apptSnap = await apptRef.get();
+
+        if (!apptSnap.exists) {
+            res.status(404).json({ error: "Appointment not found" });
+            return;
+        }
+
+        // Verify the appointment belongs to this client
+        if (apptSnap.data()?.clientId !== clientId) {
+            res.status(403).json({ error: "Forbidden" });
+            return;
+        }
+
+        await apptRef.delete();
         res.json({ message: "Appointment deleted" });
     } catch (e: any) {
-        res.status(500).json({ error: e.message });
+        console.error("[DELETE /appointments] Error:", e);
+        res.status(500).json({ error: "Internal server error" });
     }
 });
 
