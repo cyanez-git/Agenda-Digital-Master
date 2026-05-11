@@ -7,4 +7,4 @@ if (admin.apps.length === 0) {
 }
 
 // Export the named database instance
-export const db = getFirestore(admin.app(), "pacientesturnos");
+export const db = getFirestore(admin.app());
